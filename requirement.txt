@@ -1,0 +1,7 @@
+pillow
+pytesseract
+numpy
+glob2
+regex
+opencv-python
+pandas
