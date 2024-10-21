@@ -4,6 +4,18 @@ import numpy as np
 import os
 import glob
 import re
+import csv
+
+
+def saveCSV(names, prices):
+    assert len(names) == len(prices)
+
+    with open("data.csv", "w", newline="") as file:
+        writer = csv.writer(file)
+        field = ["Name", "Price"]
+        writer.writerow(field)
+        for n, p in zip(names, prices):
+            writer.writerow([n, p])
 
 
 def bynariseImageText(img):
@@ -56,6 +68,8 @@ def cropImage(path="images/base/base_img.png"):
     img2 = img.crop(box)
     img2.save("images/cropped/cropped.png")
     nb_lines = int((837 - 207) / 45)
+    names = []
+    prices = []
     for line in range(nb_lines):
         # Line generation
         box = (625, 207 + line * 45, 1200, 207 + (line + 1) * 45)
@@ -78,7 +92,8 @@ def cropImage(path="images/base/base_img.png"):
         text = pytesseract.image_to_string(increase_img, lang="fra", config="--psm 7")
 
         # Print the extracted text without spaces at the end
-        print(re.sub(r"^\s+|\s+$", "", text))
+        # print(re.sub(r"^\s+|\s+$", "", text))
+        names.append(re.sub(r"^\s+|\s+$", "", text))
 
         increase_img.save(
             "images/cropped/decomposed/" + "{:02d}_name".format(line) + ".png"
@@ -100,12 +115,14 @@ def cropImage(path="images/base/base_img.png"):
 
         # Perform OCR using PyTesseract
         text = pytesseract.image_to_string(increase_img, config="--psm 6 digits")
-        print(re.sub(r"^\s+|\s+$", "", text))
+        # print(re.sub(r"^\s+|\s+$", "", text))
+        prices.append(re.sub(r"^\s+|\s+$", "", text))
 
         increase_img.save(
             "images/cropped/decomposed/" + "{:02d}_price".format(line) + ".png"
         )
-        print("----------------")
+
+    saveCSV(names=names, prices=prices)
 
 
 if __name__ == "__main__":
