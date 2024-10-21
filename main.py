@@ -6,6 +6,27 @@ import glob
 import re
 
 
+def bynariseImageText(img):
+    img2 = ImageOps.invert(img)
+    # img.show()
+    table = []
+    pixelArray = img2.load()
+    for y in range(img2.size[1]):  # binaryzate it
+        List = []
+        for x in range(img2.size[0]):
+            # RGB
+            if pixelArray[x, y][2] > 230:
+                List.append(0)
+
+            else:
+                List.append(255)
+        table.append(List)
+    final_img = Image.fromarray(
+        np.array(table).astype(np.uint8)
+    )  # load the image from array.
+    return final_img
+
+
 def bynariseImageBlackWhite(img, threshold=170):
     img2 = ImageOps.invert(img.convert("L"))
     # img.show()
@@ -51,10 +72,10 @@ def cropImage(path="images/base/base_img.png"):
         )
 
         # Binarise image for better IA
-        increase_img = bynariseImage(increase_img, threshold=170)
+        increase_img = bynariseImageText(increase_img)
 
         # Perform OCR using PyTesseract
-        text = pytesseract.image_to_string(increase_img, lang="fra")
+        text = pytesseract.image_to_string(increase_img, lang="fra", config="--psm 7")
 
         # Print the extracted text without spaces at the end
         print(re.sub(r"^\s+|\s+$", "", text))
@@ -75,7 +96,7 @@ def cropImage(path="images/base/base_img.png"):
         )
 
         # Binarise image for better IA
-        increase_img = bynariseImage(increase_img, threshold=190)
+        increase_img = bynariseImageBlackWhite(increase_img, threshold=150)
 
         # Perform OCR using PyTesseract
         text = pytesseract.image_to_string(increase_img, config="--psm 6 digits")
