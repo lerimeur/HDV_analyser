@@ -1,11 +1,10 @@
 from PIL import Image, ImageOps
 import pytesseract
 import numpy as np
-import os
-import glob
 import re
 import csv
 import cv2
+import pandas as pd
 
 def saveCSV(names, prices):
     assert len(names) == len(prices)
@@ -50,8 +49,6 @@ def bynariseImageBlackWhite(img, threshold=170):
 def processFrame(frame):
     img = Image.fromarray(frame)
     img.save("images/cropped/cropped.png")
-    # box = (0, 0, 45, 1200)
-    # img2 = img.crop(box)
     nb_lines = 14
     names = []
     prices = []
@@ -64,7 +61,7 @@ def processFrame(frame):
         name_img = img_line.crop(name_box)
         
         s = name_img.size
-        ratio = 5
+        ratio = 3
         increase_img = name_img.resize((s[0] * ratio, s[1] * ratio), Image.Resampling.LANCZOS)
 
         increase_img = bynariseImageText(increase_img)
@@ -77,7 +74,7 @@ def processFrame(frame):
         price_box = (600, 0, 750, 62)
         price_img = img_line.crop(price_box)
         s = price_img.size
-        ratio = 5
+        ratio = 3
         increase_img = price_img.resize((s[0] * ratio, s[1] * ratio), Image.Resampling.LANCZOS)
            
         increase_img = bynariseImageBlackWhite(increase_img, threshold=150)
@@ -89,7 +86,7 @@ def processFrame(frame):
 
     return names, prices
 
-def cropVideo(path="./test.mp4"):
+def cropVideo(path="./test_2.mp4"):
     cap = cv2.VideoCapture(path)
     if (cap.isOpened()== False):
         print("Error opening video file")
@@ -103,11 +100,11 @@ def cropVideo(path="./test.mp4"):
     while(cap.isOpened()):
         ret, frame = cap.read()
         if ret == True:
-            if frame_count % fps == 1:
+            if frame_count % 12 == 0:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 frame_names, frame_prices = processFrame(frame)
-                names.append(frame_names)
-                prices.append(frame_prices)
+                names = names + frame_names
+                prices = prices + frame_prices
             frame_count += 1
         else:
             break
@@ -116,5 +113,9 @@ def cropVideo(path="./test.mp4"):
 
     saveCSV(names=names, prices=prices)
 
+    df = pd.read_csv('data.csv')
+    df = df.drop_duplicates()
+    df.to_csv('cleaned_data.csv', index=False)
+
 if __name__ == "__main__":
-    cropVideo(path="./test.mp4")
+    cropVideo(path="./test_all.mp4")
