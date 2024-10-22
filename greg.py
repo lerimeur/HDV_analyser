@@ -7,13 +7,13 @@ import pandas as pd
 import logging
 from PIL import Image, ImageOps
 from tqdm import tqdm
-
+import os
 # Set up logging
 logging.basicConfig(filename='ocr.log', level=logging.INFO)
 
-# Set up constants
-DATE = "2024-10-21"
-FILENAME = "test_2"
+# # Set up constants
+# DATE = "2024-10-21"
+# FILENAME = "test_2"
 
 def save_csv(names, prices):
     assert len(names) == len(prices)
@@ -115,6 +115,9 @@ def read_frames(path):
     return frames
 
 def crop_video(path):
+    filename = os.path.splitext(os.path.basename(path))[0]
+    global FILENAME
+    FILENAME = filename
     frames = read_frames(path)
     if not frames:
         return
@@ -136,5 +139,10 @@ def crop_video(path):
     df.to_csv(FILENAME + '.csv', index=False)
     print("Final CSV saved successfully.")
 
+def process_directory(directory):
+    for filename in os.listdir(directory):
+        if filename.endswith(".mp4"):
+            crop_video(os.path.join(directory, filename))
+
 if __name__ == "__main__":
-    crop_video(path="./" + FILENAME + ".mp4")
+    process_directory("./videos")

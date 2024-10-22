@@ -5,3 +5,4 @@ glob2
 regex
 opencv-python
 pandas
+tqdm
