@@ -6,15 +6,19 @@ import csv
 import cv2
 import pandas as pd
 
+date = "2024-10-21"
+filename = "ressource-" + date
+
+
 def saveCSV(names, prices):
     assert len(names) == len(prices)
 
     with open("data.csv", "w", newline="") as file:
         writer = csv.writer(file)
-        field = ["Name", "Price"]
+        field = ["Name", "Price", "date"]
         writer.writerow(field)
         for n, p in zip(names, prices):
-            writer.writerow([n, p])
+            writer.writerow([n, p, date])
 
 def bynariseImageText(img):
     img2 = ImageOps.invert(img)
@@ -61,7 +65,7 @@ def processFrame(frame):
         name_img = img_line.crop(name_box)
         
         s = name_img.size
-        ratio = 3
+        ratio = 5
         increase_img = name_img.resize((s[0] * ratio, s[1] * ratio), Image.Resampling.LANCZOS)
 
         increase_img = bynariseImageText(increase_img)
@@ -74,7 +78,7 @@ def processFrame(frame):
         price_box = (600, 0, 750, 62)
         price_img = img_line.crop(price_box)
         s = price_img.size
-        ratio = 3
+        ratio = 5
         increase_img = price_img.resize((s[0] * ratio, s[1] * ratio), Image.Resampling.LANCZOS)
            
         increase_img = bynariseImageBlackWhite(increase_img, threshold=150)
@@ -86,7 +90,7 @@ def processFrame(frame):
 
     return names, prices
 
-def cropVideo(path="./test_2.mp4"):
+def cropVideo(path):
     cap = cv2.VideoCapture(path)
     if (cap.isOpened()== False):
         print("Error opening video file")
@@ -100,7 +104,7 @@ def cropVideo(path="./test_2.mp4"):
     while(cap.isOpened()):
         ret, frame = cap.read()
         if ret == True:
-            if frame_count % 12 == 0:
+            if frame_count % 5 == 0:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 frame_names, frame_prices = processFrame(frame)
                 names = names + frame_names
@@ -115,7 +119,7 @@ def cropVideo(path="./test_2.mp4"):
 
     df = pd.read_csv('data.csv')
     df = df.drop_duplicates()
-    df.to_csv('cleaned_data.csv', index=False)
+    df.to_csv(filename+'.csv', index=False)
 
 if __name__ == "__main__":
-    cropVideo(path="./test_all.mp4")
+    cropVideo(path="./"+ filename +".mp4")
