@@ -116,8 +116,9 @@ def read_frames(path):
 
 def crop_video(path):
     filename = os.path.splitext(os.path.basename(path))[0]
-    global FILENAME
+    global FILENAME, DATE
     FILENAME = filename
+    DATE = filename.split('-')[-1]
     frames = read_frames(path)
     if not frames:
         return
