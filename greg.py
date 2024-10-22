@@ -1,56 +1,62 @@
-from PIL import Image, ImageOps
+import cv2
 import pytesseract
 import numpy as np
 import re
 import csv
-import cv2
 import pandas as pd
+import logging
+from PIL import Image, ImageOps
+from tqdm import tqdm
 
-date = "2024-10-21"
-filename = "ressource-" + date
+# Set up logging
+logging.basicConfig(filename='ocr.log', level=logging.INFO)
 
+# Set up constants
+DATE = "2024-10-21"
+FILENAME = "test_2"
 
-def saveCSV(names, prices):
+def save_csv(names, prices):
     assert len(names) == len(prices)
 
     with open("data.csv", "w", newline="") as file:
         writer = csv.writer(file)
-        field = ["Name", "Price", "date"]
+        field = ["Name", "Price", "Date"]
         writer.writerow(field)
         for n, p in zip(names, prices):
-            writer.writerow([n, p, date])
+            writer.writerow([n, p, DATE])
+    print("CSV saved successfully.")
 
-def bynariseImageText(img):
+def binarize_image_text(img):
     img2 = ImageOps.invert(img)
     table = []
-    pixelArray = img2.load()
+    pixel_array = img2.load()
     for y in range(img2.size[1]):
-        List = []
+        row = []
         for x in range(img2.size[0]):
-            if pixelArray[x, y][1] < 150:
-                List.append(0)
+            if pixel_array[x, y][1] < 150:
+                row.append(0)
             else:
-                List.append(255)
-        table.append(List)
+                row.append(255)
+        table.append(row)
     final_img = Image.fromarray(np.array(table).astype(np.uint8))
     return final_img
 
-def bynariseImageBlackWhite(img, threshold=170):
+def binarize_image_black_white(img, threshold=170):
     img2 = ImageOps.invert(img.convert("L"))
     table = []
-    pixelArray = img2.load()
+    pixel_array = img2.load()
     for y in range(img2.size[1]):
-        List = []
+        row = []
         for x in range(img2.size[0]):
-            if pixelArray[x, y] < threshold:
-                List.append(0)
+            if pixel_array[x, y] < threshold:
+                row.append(0)
             else:
-                List.append(255)
-        table.append(List)
+                row.append(255)
+        table.append(row)
     final_img = Image.fromarray(np.array(table).astype(np.uint8))
     return final_img
 
-def processFrame(frame):
+def process_frame(frame):
     img = Image.fromarray(frame)
     img.save("images/cropped/cropped.png")
     nb_lines = 14
@@ -63,12 +69,12 @@ def processFrame(frame):
 
         name_box = (50, 0, 370, 62)
         name_img = img_line.crop(name_box)
-        
+
         s = name_img.size
         ratio = 5
         increase_img = name_img.resize((s[0] * ratio, s[1] * ratio), Image.Resampling.LANCZOS)
 
-        increase_img = bynariseImageText(increase_img)
+        increase_img = binarize_image_text(increase_img)
         increase_img.save(
             "images/cropped/decomposed/" + "{:02d}_name".format(line) + ".png"
         )
@@ -80,8 +86,8 @@ def processFrame(frame):
         s = price_img.size
         ratio = 5
         increase_img = price_img.resize((s[0] * ratio, s[1] * ratio), Image.Resampling.LANCZOS)
-           
-        increase_img = bynariseImageBlackWhite(increase_img, threshold=150)
+
+        increase_img = binarize_image_black_white(increase_img, threshold=150)
         increase_img.save(
             "images/cropped/decomposed/" + "{:02d}_price".format(line) + ".png"
         )
@@ -90,36 +96,45 @@ def processFrame(frame):
 
     return names, prices
 
-def cropVideo(path):
+def read_frames(path):
     cap = cv2.VideoCapture(path)
-    if (cap.isOpened()== False):
-        print("Error opening video file")
+    if not cap.isOpened():
+        logging.error("Error opening video file")
         return
 
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-    frame_count = 0
-    names = []
-    prices = []
-
-    while(cap.isOpened()):
+    frames = []
+    while cap.isOpened():
         ret, frame = cap.read()
-        if ret == True:
-            if frame_count % 5 == 0:
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frame_names, frame_prices = processFrame(frame)
-                names = names + frame_names
-                prices = prices + frame_prices
-            frame_count += 1
+        if ret:
+            frames.append(frame)
         else:
             break
 
     cap.release()
+    print(f"Read {len(frames)} frames from the video.")
+    return frames
 
-    saveCSV(names=names, prices=prices)
+def crop_video(path):
+    frames = read_frames(path)
+    if not frames:
+        return
+
+    names = []
+    prices = []
+
+    # Process each frame with a progress bar
+    for i, frame in enumerate(tqdm(frames, desc="Processing frames")):
+        frame_names, frame_prices = process_frame(frame)
+        names.extend(frame_names)
+        prices.extend(frame_prices)
+
+    save_csv(names=names, prices=prices)
 
     df = pd.read_csv('data.csv')
-    df = df.drop_duplicates()
-    df.to_csv(filename+'.csv', index=False)
+    df = df.drop_duplicates(subset='Name')
+    df = df[df['Name'].str.isalnum()]
+    df.to_csv(FILENAME + '.csv', index=False)
+    print("Final CSV saved successfully.")
 
 if __name__ == "__main__":
-    cropVideo(path="./"+ filename +".mp4")
+    crop_video(path="./" + FILENAME + ".mp4")
