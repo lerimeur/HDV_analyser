@@ -6,3 +6,5 @@ regex
 opencv-python
 pandas
 tqdm
+fuzzywuzzy
+python-Levenshtein
