@@ -35,6 +35,7 @@ def binarize_image_black_white(img, threshold=170):
 # Frame processing function with OCR and binarization
 def process_frame(frame):
     img = Image.fromarray(frame)
+    img.save("images/cropped/cropped.png")
     nb_lines = 14
     names = []
     prices = []
@@ -50,6 +51,9 @@ def process_frame(frame):
         increase_img = name_img.resize((s[0] * ratio, s[1] * ratio), Image.Resampling.LANCZOS)
 
         increase_img = binarize_image_black_white(increase_img)
+        increase_img.save(
+            "images/cropped/decomposed/" + "{:02d}_name".format(line) + ".png"
+        )
         text = pytesseract.image_to_string(increase_img, lang="fra", config="--psm 7")
         names.append(re.sub(r"^\s+|\s+$", "", text))
 
@@ -60,6 +64,9 @@ def process_frame(frame):
         increase_img = price_img.resize((s[0] * ratio, s[1] * ratio), Image.Resampling.LANCZOS)
 
         increase_img = binarize_image_black_white(increase_img, threshold=150)
+        increase_img.save(
+            "images/cropped/decomposed/" + "{:02d}_price".format(line) + ".png"
+        )
         text = pytesseract.image_to_string(increase_img, config="--psm 6 digits")
         prices.append(re.sub(r"^\s+|\s+$", "", text))
 
@@ -73,17 +80,20 @@ def process_frames_in_parallel(frames):
     return [name for sublist in names for name in sublist], [price for sublist in prices for price in sublist]
 
 # Read frames from video
-def read_frames(path):
+def read_frames(path, frame_interval=3):
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
         logging.error("Error opening video file")
         return []
 
     frames = []
+    frame_count = 0
     while cap.isOpened():
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count * frame_interval)
         ret, frame = cap.read()
         if ret:
             frames.append(frame)
+            frame_count += 1
         else:
             break
 
@@ -109,7 +119,7 @@ def crop_video(path):
     df = pd.read_csv('data.csv')
     df['Name'] = df['Name'].fillna('_')
     df = df.drop_duplicates(subset='Name')
-    df = df[df['Name'].str[0].str.isalpha()]
+    # df = df[df['Name'].str.isalpha()]
     df.to_csv(f'{filename}.csv', index=False)
     print("Final CSV saved successfully.")
 
